@@ -1,0 +1,85 @@
+<?php
+// pages/material_types/delete.php - ลบประเภทวัสดุ
+require_once "../../config/config.php";
+require_once "../../classes/Auth.php";
+
+$auth = new Auth();
+$auth->requireLogin();
+$auth->requireRole('admin'); // เฉพาะ admin เท่านั้น
+
+// ข้อมูลผู้ใช้
+$user_id = $_SESSION['user_id'] ?? 'N/A';
+$material_type_id = $_GET['id'] ?? '';
+
+// ตรวจสอบ ID
+if (empty($material_type_id) || !is_numeric($material_type_id)) {
+    header("Location: index.php?message=" . urlencode("ไม่พบรหัสประเภทวัสดุ") . "&type=danger");
+    exit;
+}
+
+try {
+    if (defined('DB_SERVER') && defined('DB_NAME') && defined('DB_USERNAME') && defined('DB_PASSWORD')) {
+        require_once "../../config/database.php";
+        $database = new Database();
+        $conn = $database->getConnection();
+        
+        // ดึงข้อมูลประเภทวัสดุก่อนลบ
+        $stmt = $conn->prepare("SELECT material_type_id, type_code, type_name, is_active FROM Material_Types WHERE material_type_id = ?");
+        $stmt->execute([$material_type_id]);
+        $material_type = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$material_type) {
+            header("Location: index.php?message=" . urlencode("ไม่พบข้อมูลประเภทวัสดุ") . "&type=danger");
+            exit;
+        }
+        
+        // ตรวจสอบว่าประเภทวัสดุนี้ยังใช้งานอยู่หรือไม่
+        if ($material_type['is_active'] == 1) {
+            header("Location: index.php?message=" . urlencode("ไม่สามารถลบประเภทวัสดุที่ยังใช้งานอยู่ได้ กรุณาปิดการใช้งานก่อน") . "&type=warning");
+            exit;
+        }
+        
+        // ตรวจสอบว่ามีวัสดุที่ใช้ประเภทนี้หรือไม่
+        try {
+            $materialCheckStmt = $conn->prepare("SELECT COUNT(*) as material_count FROM Master_Products_ID WHERE material_type_id = ?");
+            $materialCheckStmt->execute([$material_type_id]);
+            $materialCountResult = $materialCheckStmt->fetch();
+            $materialCount = $materialCountResult['material_count'] ?? 0;
+            
+            if ($materialCount > 0) {
+                header("Location: index.php?message=" . urlencode("ไม่สามารถลบประเภทวัสดุที่มีวัสดุ {$materialCount} รายการเชื่อมโยงอยู่") . "&type=warning");
+                exit;
+            }
+        } catch (Exception $e) {
+            // ถ้าไม่มีตาราง Master_Products_ID ให้ดำเนินการต่อ
+        }
+        
+        // ลบประเภทวัสดุ
+        $deleteStmt = $conn->prepare("DELETE FROM Material_Types WHERE material_type_id = ?");
+        $deleteStmt->execute([$material_type_id]);
+        
+        // ตรวจสอบผลลัพธ์
+        if ($deleteStmt->rowCount() > 0) {
+            $message = "ลบประเภทวัสดุ '{$material_type['type_name']}' เรียบร้อยแล้ว";
+            $message_type = "success";
+            
+            // บันทึก log (ถ้าต้องการ)
+            error_log("Material Type deleted: ID={$material_type_id}, Code={$material_type['type_code']}, Name={$material_type['type_name']}, User={$user_id}");
+        } else {
+            $message = "ไม่สามารถลบประเภทวัสดุได้";
+            $message_type = "danger";
+        }
+        
+    } else {
+        throw new Exception("ไม่สามารถเชื่อมต่อฐานข้อมูลได้");
+    }
+    
+} catch (Exception $e) {
+    $message = "เกิดข้อผิดพลาด: " . $e->getMessage();
+    $message_type = "danger";
+}
+
+// เปลี่ยนเส้นทางกลับไปหน้ารายการ
+header("Location: index.php?message=" . urlencode($message) . "&type=" . $message_type);
+exit;
+?>
