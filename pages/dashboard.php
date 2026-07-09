@@ -613,6 +613,26 @@ try {
                             <div class="menu-desc">ดูและจัดการสต็อกสินค้า</div>
                         </div>
                     </a>
+
+                    <a href="inventory_dashboard.php" class="menu-btn">
+                        <div class="menu-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="menu-content">
+                            <div class="menu-title">Inventory Dashboard</div>
+                            <div class="menu-desc">ภาพรวมระบบรับเข้า-จ่ายออกสต็อก</div>
+                        </div>
+                    </a>
+
+                    <a href="http://localhost:5000" target="_blank" class="menu-btn">
+                        <div class="menu-icon">
+                            <i class="fas fa-print"></i>
+                        </div>
+                        <div class="menu-content">
+                            <div class="menu-title">PPF Ink Analyzer</div>
+                            <div class="menu-desc">วิเคราะห์ Heidelberg ink key zones</div>
+                        </div>
+                    </a>
                 </div>
             </div>
         </div>
